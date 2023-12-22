@@ -27,28 +27,41 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
   const onChangeImage = async () => {
     setIsLoading(true);
 
-    if (value.length >= 0) onRemove(value[0]);
+    // Check if there is a previous image and remove it
+    if (value.length > 0) {
+      const previousImageUrl = value[0];
 
+      try {
+        await fetch(`/api/images?url=${encodeURIComponent(previousImageUrl)}`, {
+          method: "DELETE",
+        });
+      } catch (error) {
+        console.error("Error deleting previous image:", error);
+      }
+
+      // Trigger onRemove to remove the URL from the state
+      onRemove(previousImageUrl);
+    }
+
+    // Upload the new image
     const file = inputFileRef.current?.files?.[0];
 
     try {
-      if (
-        !inputFileRef.current?.files ||
-        inputFileRef.current.files.length === 0
-      ) {
+      if (!file) {
         return;
       }
 
-      const response = await fetch(`/api/images?filename=${file?.name}`, {
+      const response = await fetch(`/api/images?filename=${file.name}`, {
         method: "POST",
         body: file,
       });
 
       const newBlob = (await response.json()) as PutBlobResult;
 
+      // Trigger onChange to update the state with the new image URL
       onChange(newBlob.url);
     } catch (error) {
-      console.log(error);
+      console.error("Error uploading new image:", error);
     } finally {
       setIsLoading(false);
     }
