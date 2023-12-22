@@ -3,7 +3,6 @@ import { NextResponse } from "next/server";
 import { put } from "@vercel/blob";
 import { del } from "@vercel/blob";
 import { auth } from "@clerk/nextjs";
-import { url } from "inspector";
 
 export async function POST(request: Request): Promise<NextResponse> {
   const { userId } = auth();

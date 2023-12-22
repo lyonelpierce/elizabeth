@@ -84,12 +84,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
                   key={url}
                   className="absolute h-52 w-72 rounded-md overflow-hidden"
                 >
-                  <Image
-                    fill
-                    className="bg-gray-200 object-cover"
-                    alt="Image"
-                    src={url}
-                  />
+                  <Image fill className="object-cover" alt="Image" src={url} />
                 </div>
               ))}
             </>

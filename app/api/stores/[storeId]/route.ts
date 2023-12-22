@@ -11,7 +11,7 @@ export async function PATCH(
     const body = await req.json();
     const { name } = body;
 
-    if (!userId) return new NextResponse("Unauthorized", { status: 401 });
+    if (!userId) return new NextResponse("Unauthenticated", { status: 401 });
 
     if (!name) return new NextResponse("Name is required", { status: 400 });
 
@@ -42,7 +42,7 @@ export async function DELETE(
   try {
     const { userId } = auth();
 
-    if (!userId) return new NextResponse("Unauthorized", { status: 401 });
+    if (!userId) return new NextResponse("Unauthenticated", { status: 401 });
 
     if (!params.storeId)
       return new NextResponse("StoreId is required", { status: 400 });

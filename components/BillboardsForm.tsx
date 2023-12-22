@@ -23,7 +23,6 @@ import { Input } from "@/components/ui/input";
 import Heading from "@/components/ui/heading";
 import toast from "react-hot-toast";
 import { AlertModal } from "@/components/modals/alert-modal";
-import { useOrigin } from "@/hooks/use-origin";
 import ImageUpload from "@/components/ui/image-upload";
 
 interface BillboardsFormProps {
@@ -40,8 +39,8 @@ type BillboardsFormValues = z.infer<typeof formSchema>;
 const BillboardsForm: React.FC<BillboardsFormProps> = ({ initialData }) => {
   const params = useParams();
   const router = useRouter();
-  const origin = useOrigin();
   const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const title = initialData ? "Edit billboard" : "New billboard";
   const description = initialData
@@ -60,27 +59,36 @@ const BillboardsForm: React.FC<BillboardsFormProps> = ({ initialData }) => {
   const isLoading = form.formState.isSubmitting;
 
   const onSubmit = async (values: BillboardsFormValues) => {
-    console.log(values);
-    // try {
-    //   await axios.patch(`/api/stores/${params.storeId}`, values);
-    //   router.refresh();
-    //   toast.success("Store updated!");
-    // } catch (error) {
-    //   toast.error("Something went wrong!");
-    // }
+    try {
+      if (initialData) {
+        await axios.patch(
+          `/api/${params.storeId}/billboards/${params.billboardId}`,
+          values
+        );
+      } else {
+        await axios.post(`/api/${params.storeId}/billboards`, values);
+      }
+      router.refresh();
+      router.push(`/${params.storeId}/billboards`);
+      toast.success(toastMessage);
+    } catch (error) {
+      toast.error("Something went wrong!");
+    }
   };
 
   const onDelete = async () => {
     try {
-      await axios.delete(`/api/stores/${params.storeId}`);
-      router.refresh();
-      router.push("/");
-      toast.success("Store deleted");
-    } catch (error) {
-      toast.error(
-        "Are you sure? This will remove all products and categories!"
+      setLoading(true);
+      await axios.delete(
+        `/api/${params.storeId}/billboards/${params.billboardId}`
       );
+      router.refresh();
+      router.push(`/${params.storeId}/billboards`);
+      toast.success("Billboard deleted");
+    } catch (error) {
+      toast.error("Are you sure? This will remove all categories!");
     } finally {
+      setLoading(false);
       setOpen(false);
     }
   };
@@ -91,7 +99,7 @@ const BillboardsForm: React.FC<BillboardsFormProps> = ({ initialData }) => {
         isOpen={open}
         onClose={() => setOpen(false)}
         onConfirm={onDelete}
-        loading={isLoading}
+        loading={loading}
       />
       <div className="flex items-center justify-between">
         <Heading title={title} description={description} />
@@ -100,7 +108,7 @@ const BillboardsForm: React.FC<BillboardsFormProps> = ({ initialData }) => {
             variant="destructive"
             size="sm"
             onClick={() => setOpen(true)}
-            disabled={isLoading}
+            disabled={loading}
           >
             <Trash className="h-4 w-4" />
           </Button>
