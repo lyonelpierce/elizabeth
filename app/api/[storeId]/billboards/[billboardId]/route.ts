@@ -1,6 +1,8 @@
-import prismadb from "@/lib/prismadb";
-import { auth } from "@clerk/nextjs";
 import { NextResponse } from "next/server";
+
+import { put, del } from "@vercel/blob";
+import { auth } from "@clerk/nextjs";
+import prismadb from "@/lib/prismadb";
 
 export async function GET(
   _req: Request,
@@ -29,8 +31,10 @@ export async function PATCH(
 ) {
   try {
     const { userId } = auth();
-    const body = await req.json();
-    const { label, imageUrl } = body;
+    const form = await req.formData();
+    const label = form.get("label") as string;
+    const imageUrl =
+      (form.get("imageUrl") as string) || (form.get("imageFile") as File);
 
     if (!userId) return new NextResponse("Unauthenticated", { status: 401 });
 
@@ -53,13 +57,40 @@ export async function PATCH(
       return new NextResponse("Unauthorized", { status: 403 });
     }
 
+    if (typeof imageUrl === "string") {
+      const billboard = await prismadb.billboard.updateMany({
+        where: {
+          id: params.billboardId,
+        },
+        data: {
+          label,
+          imageUrl: imageUrl,
+        },
+      });
+
+      return NextResponse.json(billboard);
+    }
+
+    const blob = await put(imageUrl.name, imageUrl, { access: "public" });
+
+    const oldBillboardImage = await prismadb.billboard.findUnique({
+      where: {
+        id: params.billboardId,
+      },
+      select: {
+        imageUrl: true,
+      },
+    });
+
+    if (oldBillboardImage) await del(oldBillboardImage.imageUrl);
+
     const billboard = await prismadb.billboard.updateMany({
       where: {
         id: params.billboardId,
       },
       data: {
         label,
-        imageUrl,
+        imageUrl: blob.url,
       },
     });
 
@@ -94,6 +125,17 @@ export async function DELETE(
 
     if (!storeByUserId)
       return new NextResponse("Unauthorized", { status: 403 });
+
+    const oldBillboardImage = await prismadb.billboard.findUnique({
+      where: {
+        id: params.billboardId,
+      },
+      select: {
+        imageUrl: true,
+      },
+    });
+
+    if (oldBillboardImage) await del(oldBillboardImage.imageUrl);
 
     const billboard = await prismadb.billboard.deleteMany({
       where: {

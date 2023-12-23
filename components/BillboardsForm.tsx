@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, ChangeEvent } from "react";
 import { useParams, useRouter } from "next/navigation";
 
 import * as z from "zod";
 import axios from "axios";
 import { useForm } from "react-hook-form";
-import { Trash } from "lucide-react";
+import { Loader2, Trash, Upload } from "lucide-react";
 import { Billboard } from "@prisma/client";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -24,14 +24,41 @@ import Heading from "@/components/ui/heading";
 import toast from "react-hot-toast";
 import { AlertModal } from "@/components/modals/alert-modal";
 import ImageUpload from "@/components/ui/image-upload";
+import { Label } from "@/components/ui/label";
+import Image from "next/image";
 
 interface BillboardsFormProps {
   initialData: Billboard | null;
 }
 
+const MAX_IMAGE_SIZE = 4000000;
+const ALLOWED_IMAGE_TYPES = [
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/webp",
+];
+
 const formSchema = z.object({
   label: z.string().min(1),
-  imageUrl: z.string().min(1),
+  imageUrl: z.union([
+    z.string(),
+    z
+      .custom<FileList>((val) => val instanceof FileList, "Image is required")
+      .refine((files) => files.length > 0, "Image is required")
+      .refine(
+        (files) =>
+          Array.from(files).every((file) => file.size <= MAX_IMAGE_SIZE),
+        "Image size should not be more than 4mb."
+      )
+      .refine(
+        (files) =>
+          Array.from(files).every((file) =>
+            ALLOWED_IMAGE_TYPES.includes(file.type)
+          ),
+        "Only these formats are allowed .jpg, .jpeg, .png, and .webp"
+      ),
+  ]),
 });
 
 type BillboardsFormValues = z.infer<typeof formSchema>;
@@ -39,8 +66,10 @@ type BillboardsFormValues = z.infer<typeof formSchema>;
 const BillboardsForm: React.FC<BillboardsFormProps> = ({ initialData }) => {
   const params = useParams();
   const router = useRouter();
+
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [billboardImage, setBillboardImage] = useState<string | null>(null);
 
   const title = initialData ? "Edit billboard" : "New billboard";
   const description = initialData
@@ -53,20 +82,31 @@ const BillboardsForm: React.FC<BillboardsFormProps> = ({ initialData }) => {
 
   const form = useForm<BillboardsFormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: initialData || { label: "", imageUrl: "" },
+    defaultValues: initialData || { label: "", imageUrl: undefined },
   });
 
   const isLoading = form.formState.isSubmitting;
 
   const onSubmit = async (values: BillboardsFormValues) => {
     try {
+      const formData = new FormData();
+      formData.append("label", values.label);
+
+      if (values.imageUrl) {
+        if (typeof values.imageUrl === "string") {
+          formData.append("imageFile", values.imageUrl);
+        } else {
+          formData.append("imageUrl", values.imageUrl[0]);
+        }
+      }
+
       if (initialData) {
         await axios.patch(
           `/api/${params.storeId}/billboards/${params.billboardId}`,
-          values
+          formData
         );
       } else {
-        await axios.post(`/api/${params.storeId}/billboards`, values);
+        await axios.post(`/api/${params.storeId}/billboards`, formData);
       }
       router.refresh();
       router.push(`/${params.storeId}/billboards`);
@@ -92,6 +132,29 @@ const BillboardsForm: React.FC<BillboardsFormProps> = ({ initialData }) => {
       setOpen(false);
     }
   };
+
+  function getImageData(event: ChangeEvent<HTMLInputElement>) {
+    const files = event.target.files;
+
+    if (!files || files.length === 0) {
+      return { files: null, displayUrl: null };
+    }
+
+    const file = files[0];
+
+    if (!file) {
+      return { files: null, displayUrl: null };
+    }
+
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(file);
+
+    const displayUrl = URL.createObjectURL(file);
+
+    setBillboardImage(displayUrl);
+
+    return { files: dataTransfer.files, displayUrl };
+  }
 
   return (
     <>
@@ -123,16 +186,59 @@ const BillboardsForm: React.FC<BillboardsFormProps> = ({ initialData }) => {
           <FormField
             control={form.control}
             name="imageUrl"
-            render={({ field }) => (
+            render={({ field: { onChange, value, ...rest } }) => (
               <FormItem>
                 <FormLabel>Background Image</FormLabel>
                 <FormControl>
-                  <ImageUpload
-                    value={field.value ? [field.value] : []}
-                    disable={isLoading}
-                    onChange={(url) => field.onChange(url)}
-                    onRemove={() => field.onChange("")}
-                  />
+                  <div className="w-72 h-52">
+                    <Label htmlFor="image-upload" className="relative">
+                      <div className="relative bg-gray-200 rounded-md h-52 w-72 flex flex-col items-center justify-center gap-2 cursor-pointer group">
+                        {isLoading ? (
+                          <div className="absolute bg-gray-300 rounded-md h-full w-full flex items-center justify-center">
+                            <Loader2 className="h-6 w-6 animate-spin" />
+                          </div>
+                        ) : (
+                          <>
+                            <Upload className="h-6 w-6 transition-transform ease-in-out delay-150 group-hover:scale-125" />
+                            Click to upload
+                            <div className="absolute h-52 w-72 rounded-md overflow-hidden">
+                              {initialData ? (
+                                <Image
+                                  fill
+                                  className="object-cover"
+                                  alt="Image"
+                                  src={billboardImage || initialData.imageUrl}
+                                />
+                              ) : (
+                                <>
+                                  {billboardImage && (
+                                    <Image
+                                      fill
+                                      className="object-cover"
+                                      alt="Image"
+                                      src={billboardImage}
+                                    />
+                                  )}
+                                </>
+                              )}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                      <Input
+                        id="image-upload"
+                        className="sr-only"
+                        type="file"
+                        accept=".jpg, .jpeg, .png, .webp"
+                        {...rest}
+                        disabled={isLoading}
+                        onChange={(event) => {
+                          const { files } = getImageData(event);
+                          onChange(files);
+                        }}
+                      />
+                    </Label>
+                  </div>
                 </FormControl>
                 <FormMessage />
               </FormItem>

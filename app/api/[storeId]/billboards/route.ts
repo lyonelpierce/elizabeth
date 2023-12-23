@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { put } from "@vercel/blob";
 import { auth } from "@clerk/nextjs";
 import prismadb from "@/lib/prismadb";
 
@@ -9,13 +10,18 @@ export async function POST(
 ) {
   try {
     const { userId } = auth();
-    const body = await req.json();
-    const { label, imageUrl } = body;
+
+    const form = await req.formData();
+    const label = form.get("label") as string;
+    const imageUrl = form.get("imageUrl") as File;
 
     if (!userId) return new NextResponse("Unauthenticated", { status: 401 });
     if (!label) return new NextResponse("Label is required", { status: 400 });
     if (!imageUrl)
       return new NextResponse("Image URL is required", { status: 400 });
+
+    const blob = await put(imageUrl.name, imageUrl, { access: "public" });
+
     if (!params.storeId)
       return new NextResponse("Store ID is required", { status: 400 });
 
@@ -33,7 +39,7 @@ export async function POST(
     const billboard = await prismadb.billboard.create({
       data: {
         label,
-        imageUrl,
+        imageUrl: blob.url,
         storeId: params.storeId,
       },
     });
