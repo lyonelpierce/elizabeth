@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 
 import axios from "axios";
 import toast from "react-hot-toast";
-import { BillboardColumn } from "@/components/Columns";
+import { CategoryColumn } from "@/components/CategoryColumns";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,9 +16,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Copy, Edit, MoreHorizontal, Trash } from "lucide-react";
 import { AlertModal } from "@/components/modals/alert-modal";
+import { Separator } from "@/components/ui/separator";
 
 interface CellActionsProps {
-  data: BillboardColumn;
+  data: CategoryColumn;
 }
 
 const onCopy = (id: string) => {
@@ -36,12 +37,11 @@ const CellActions: React.FC<CellActionsProps> = ({ data }) => {
   const onDelete = async () => {
     try {
       setLoading(true);
-      await axios.delete(`/api/${params.storeId}/billboards/${data.id}`);
-      router.refresh();
-      router.push(`/${params.storeId}/billboards`);
-      toast.success("Billboard deleted");
+      await axios.delete(`/api/${params.storeId}/categories/${data.id}`);
+      router.push(`/${params.storeId}/categories`);
+      toast.success("Category deleted");
     } catch (error) {
-      toast.error("Are you sure? This will remove all categories!");
+      toast.error("Are you sure? This will remove all products!");
     } finally {
       setLoading(false);
       setOpen(false);
@@ -70,24 +70,27 @@ const CellActions: React.FC<CellActionsProps> = ({ data }) => {
             className="cursor-pointer"
           >
             <Copy className="w-4 h-4 mr-2" />
-            Copy Id
+            Copy ID
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={() =>
-              router.push(`/${params.storeId}/billboards/${data.id}`)
+              router.push(`/${params.storeId}/categories/${data.id}`)
             }
             className="cursor-pointer"
           >
             <Edit className="w-4 h-4 mr-2" />
             Update
           </DropdownMenuItem>
+          <Separator />
           <DropdownMenuItem
             onClick={() => setOpen(true)}
             className="cursor-pointer"
             disabled={loading}
           >
-            <Trash className="w-4 h-4 mr-2" />
-            Delete
+            <p className="text-red-400 flex items-center">
+              <Trash className="w-4 h-4 mr-2" />
+              Delete
+            </p>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

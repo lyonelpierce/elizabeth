@@ -6,7 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import * as z from "zod";
 import axios from "axios";
 import { useForm } from "react-hook-form";
-import { Loader2, Trash, Upload } from "lucide-react";
+import { Trash } from "lucide-react";
 import { Billboard } from "@prisma/client";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -24,8 +24,6 @@ import Heading from "@/components/ui/heading";
 import toast from "react-hot-toast";
 import { AlertModal } from "@/components/modals/alert-modal";
 import ImageUploadComponent from "@/components/ui/image-upload";
-import { Label } from "@/components/ui/label";
-import Image from "next/image";
 
 interface BillboardsFormProps {
   initialData: Billboard | null;
@@ -181,12 +179,12 @@ const BillboardsForm: React.FC<BillboardsFormProps> = ({ initialData }) => {
       <Form {...form}>
         <form
           onSubmit={form.handleSubmit(onSubmit)}
-          className="space-y-8 w-full"
+          className="space-y-8 w-fit"
         >
           <FormField
             control={form.control}
             name="imageUrl"
-            render={({ field: { onChange, value, ...rest } }) => (
+            render={({ field: { onChange } }) => (
               <FormItem>
                 <FormLabel>Background Image</FormLabel>
                 <FormControl>
@@ -229,7 +227,6 @@ const BillboardsForm: React.FC<BillboardsFormProps> = ({ initialData }) => {
           </Button>
         </form>
       </Form>
-      <Separator />
     </>
   );
 };
